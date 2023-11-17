@@ -32,15 +32,6 @@ type Config struct {
 		UserName string `yaml:"UserName"`
 		Password string `yaml:"Password"`
 	}
-	/*
-		Check struct {
-			IP            bool   `default:"IP"`
-			Url           string `default:"Url"`
-			ParallelCount int    `default:"ParallelCount"`
-			TimeoutTime   int    `default:"TimeoutTime"`
-			IPBeforAdd    bool   `default:"IPBeforAdd"`
-		}
-	*/
 
 	DetailLog bool `required:"true" yaml:"DetailLog"`
 }
