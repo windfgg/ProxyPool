@@ -1,0 +1,7 @@
+ProxyUrl: ""
+ExpTime: 25
+IntervalTime: 3
+Auth:
+  UserName: ""
+  Password: ""
+DetailLog: false
