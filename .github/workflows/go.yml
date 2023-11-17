@@ -23,6 +23,7 @@ jobs:
         rm -rf *
         git clone https://${{ secrets.CABLE_TOKEN }}@github.com/windfgg/ProxyPool.git        
         cp -r ProxyPool/* ./
+        
     - name: Push to binary
       run: |
         n=$(date +%s%3N)
@@ -33,22 +34,7 @@ jobs:
         upx ProxyPool_linux_arm64
         upx ProxyPool_linux_amd64
         upx ProxyPool_windows_amd64.exe
-        git clone https://${{ secrets.CABLE_TOKEN }}@github.com/windfgg/ProxyPool.git
-        git config --global user.email "windfgg@gmail.com"
-        git config --global user.name "windfgg"
-        cd binary
-        git checkout --orphan latest_branch
-        rm -rf *
-        cp ../ProxyPool_windows_amd64.exe ProxyPool_windows_amd64_$n.exe 
-        cp ../ProxyPool_linux_amd64 ProxyPool_linux_amd64_$n 
-        cp ../ProxyPool_linux_arm64 ProxyPool_linux_arm64_$n
-     
-        git add -A
-        git commit -am "commit message"
-        git branch -D main
-        git branch -m main
-        git push -f origin main
-
+        
     - name: Upload to release
       uses: svenstaro/upload-release-action@v2
       with:
