@@ -1,0 +1,35 @@
+name: GoDocker
+on:
+  - push
+  - create
+jobs:
+  Build:
+    name: Build Job
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.21.4
+
+    - name: Download dependencies
+      run: go mod vendor
+
+    - name: Test
+      run: go test -v -cover -coverprofile=coverage.out .
+
+    - name: Report coverage
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      run: bash <(curl -s https://codecov.io/bash) -f coverage.out
+
+    - name: Publish
+      uses: jerray/publish-docker-action@v1.0.0
+      with:
+        username: ${{ secrets.GITHUB_USERNAME }}
+        password: ${{ secrets.CABLE_TOKEN }}
+        registry: docker.pkg.github.com
+        auto_tag: true
