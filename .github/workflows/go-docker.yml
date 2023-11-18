@@ -31,5 +31,6 @@ jobs:
       with:
         username: ${{ secrets.GITHUB_USERNAME }}
         password: ${{ secrets.CABLE_TOKEN }}
+        repository: windfgg/proxy-pool
         registry: docker.pkg.github.com
         auto_tag: true
