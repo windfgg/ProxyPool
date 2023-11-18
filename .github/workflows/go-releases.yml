@@ -1,4 +1,4 @@
-name: Go
+name: GoRelease
 
 on:
   push:
@@ -7,58 +7,30 @@ on:
     branches: [ main ]
 
 jobs:
-
-  build:
+  build-go-binary:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: ["386", amd64, arm64]
+        exclude:
+          - goarch: "386"
+            goos: darwin
+          - goarch: "amd64"
+            goos: darwin
+          - goarch: "arm64"
+            goos: darwin
+          - goarch: arm64
+            goos: windows
+  
     steps:
-    - uses: actions/checkout@v2
-
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.21.4
-    
-    - name: Git clone 
-      run: |
-        rm -rf *
-        git clone https://${{ secrets.CABLE_TOKEN }}@github.com/windfgg/ProxyPool.git        
-        cp -r ProxyPool/* ./
-        
-    - name: Push to binary
-      run: |
-        n=$(date +%s%3N)
-        CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o ProxyPool_windows_amd64.exe
-        CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o ProxyPool_linux_arm64
-        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o ProxyPool_linux_amd64
-        sudo apt-get install upx-ucl
-        upx ProxyPool_linux_arm64
-        upx ProxyPool_linux_amd64
-        upx ProxyPool_windows_amd64.exe
-        
-    - name: Upload to release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: ProxyPool_linux_amd64
-        asset_name: ProxyPool_linux_amd64
-        tag: ${{ github.ref }}
-        overwrite: true
-
-    - name: Upload to release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: ProxyPool_windows_amd64.exe
-        asset_name: ProxyPool_windows_amd64.exe
-        tag: ${{ github.ref }}
-        overwrite: true
-
-    - name: Upload to release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: ProxyPool_linux_arm64
-        asset_name: ProxyPool_linux_arm64
-        tag: ${{ github.ref }}
-        overwrite: true
-    
+      - uses: actions/checkout@v3
+      - uses: wangyoucao577/go-release-action@v1.30
+        with:
+          executable_compression: upx
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          goversion: 1.21.4 
+          binary_name: "ProxyPool"
+          extra_files: config.yml
