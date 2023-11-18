@@ -32,5 +32,5 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME  }}
         password: ${{ secrets.DOCKER_PASSWORD  }}
         registry: docker.pkg.github.com
-        repository: windfgg/ProxyPool/proxy-pool
+        repository: windfgg/proxypool/proxy-pool
         auto_tag: true
