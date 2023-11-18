@@ -1,27 +1,33 @@
 name: GoRelease
 
 on:
-  - push
-  - create
+  push:
+    branches:
+      - master
+  create:
+    tags:
+      - '*'
 
 env:
-  BINARY_NAME : "ProxyPool"
-  
+  BINARY_NAME: "ProxyPool"
+
 jobs:
   build-go-binary:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        
         goos: [linux, windows]
         goarch: ["386", amd64, arm64]
         exclude:
           - goarch: arm64
             goos: windows
-            
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: mknejp/delete-release-assets@v1
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Delete release assets
+        uses: mknejp/delete-release-assets@v1
         with:
           assets: |
             *.tar.gz
@@ -31,12 +37,15 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: latest
           fail-if-no-assets: false
-      - uses: wangyoucao577/go-release-action@v1.40
+          fail-if-no-release: false
+
+      - name: Go release action
+        uses: wangyoucao577/go-release-action@v1.40
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          asset_name: ${{env.BINARY_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          asset_name: ${{ env.BINARY_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}
           goversion: "https://dl.google.com/go/go1.21.4.linux-amd64.tar.gz"
           binary_name: ${{ env.BINARY_NAME }}
           release_tag: latest
