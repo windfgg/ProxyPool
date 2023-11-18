@@ -29,8 +29,8 @@ jobs:
     - name: Publish
       uses: jerray/publish-docker-action@v1.0.0
       with:
-        username: ${{ secrets.GITHUB_USERNAME }}
-        password: ${{ secrets.CABLE_TOKEN }}
+        username: ${{ secrets.DOCKER_USERNAME  }}
+        password: ${{ secrets.DOCKER_PASSWORD  }}
         repository: windfgg/proxy-pool
         registry: docker.pkg.github.com
         auto_tag: true
