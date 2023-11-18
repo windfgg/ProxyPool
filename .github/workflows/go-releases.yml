@@ -45,4 +45,3 @@ jobs:
           goversion: "https://dl.google.com/go/go1.21.4.linux-amd64.tar.gz"
           binary_name: ${{ env.BINARY_NAME }}
           release_tag: latest
-          extra_files: config.yml
