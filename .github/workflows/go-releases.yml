@@ -1,12 +1,8 @@
 name: GoRelease
 
 on:
-  push:
-    branches:
-      - master
-  create:
-    tags:
-      - '*'
+  - push
+  - create
 
 env:
   BINARY_NAME: "ProxyPool"

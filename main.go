@@ -1,49 +1,41 @@
 package main
 
 import (
+	cryptoRand "crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/elazarl/goproxy"
-	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
 	"github.com/jinzhu/configor"
+	"gopkg.in/yaml.v2"
 )
 
-var proxies sync.Map
-var config *Config
-
-type Config struct {
-	ProxyUrl     string `required:"true" yaml:"ProxyUrl"`
-	ExpTime      int    `required:"true" yaml:"ExpTime"`
-	IntervalTime int64  `required:"true" yaml:"IntervalTime"`
-	Auth         struct {
-		UserName string `yaml:"UserName"`
-		Password string `yaml:"Password"`
-	}
-
-	DetailLog bool `required:"true" yaml:"DetailLog"`
-}
-
 func main() {
-	configor.Load(&config, "config.yml")
-	Init()
-}
+	log.Println("Application Start")
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("Gload Error:", r)
+		}
+		log.Printf("\n Application Exit \n")
+	}()
 
-// 自定义的日志输出结构
-type customLogger struct {
-	logger *log.Logger
+	Init()
+	select {}
 }
 
 // 实现 goproxy.Logger 接口的 Printf 方法
@@ -56,18 +48,49 @@ func (c *customLogger) Printf(format string, v ...interface{}) {
 }
 
 func Init() {
-	var CaCertPath string
-	var CaKeyPath string
+	pwd, _ := os.Getwd()
+	CaCertPath := filepath.Join(pwd, "conf", "ProxyPool.pem")
+	CaKeyPath := filepath.Join(pwd, "conf", "ProxyPoolKey.pem")
+	ConfigPath := filepath.Join(pwd, "conf", "config.yml")
+
+	// 创建目录
+	err := os.MkdirAll("./conf", 0755)
+
+	// 检查配置文件是否存在
+	_, err1 := os.Stat(ConfigPath)
+	if os.IsNotExist(err1) {
+		data, err := yaml.Marshal(Config{
+			ProxyUrl:     "",
+			ExpTime:      25,
+			IntervalTime: 3,
+			Auth: Auth{
+				UserName: "",
+				Password: "",
+			},
+			DetailLog: false,
+		})
+		os.Create(ConfigPath)
+		err = os.WriteFile(ConfigPath, data, 0644)
+		if err != nil {
+			fmt.Println("无法写入配置文件:", err)
+			return
+		}
+		log.Println("Frist Run, Init config.yml...")
+	} else if err1 == nil {
+
+		log.Println("Load config.yml")
+	} else {
+		log.Println("Load Config Error:", err)
+	}
+	configor.Load(&config, "conf/config.yml")
+	if config.ProxyUrl == "" {
+		log.Println("Please Fill ConfigFile in the 'conf/config.yaml'")
+		os.Exit(-1)
+	}
+	CreteCA()
 	ProxyFactory()
 	time.Sleep(3 * time.Second)
 
-	if runtime.GOOS == "windows" {
-		CaCertPath = "\\ca\\cert.pem"
-		CaKeyPath = "\\ca\\key.pem"
-	} else {
-		CaCertPath = "/ca/cert.pem"
-		CaKeyPath = "/ca/key.pem"
-	}
 	verbose := flag.Bool("v", config.DetailLog, "should every proxy request be logged to stdout") // 设置是否输出连接信息
 	addr := flag.String("addr", ":8080", "proxy listen address")                                  // 监听端口和地址
 
@@ -75,15 +98,8 @@ func Init() {
 	logger := log.New(os.Stderr, "", log.LstdFlags)
 	proxy.Logger = &customLogger{logger}
 
-	pwd, _ := os.Getwd()
-	CaCertPath = pwd + CaCertPath
-	CaKeyPath = pwd + CaKeyPath
-
 	caCert, err := os.ReadFile(CaCertPath) // 设置为你刚才生成的证书路径
-	if err != nil {
-		log.Fatal(err)
-	}
-	caKey, _ := os.ReadFile(CaKeyPath) // 设置为你刚才生成的证书路径
+	caKey, _ := os.ReadFile(CaKeyPath)     // 设置为你刚才生成的证书路径
 	SetCA(caCert, caKey)
 	proxy.Verbose = *verbose
 
@@ -94,8 +110,84 @@ func Init() {
 		}
 	*/
 	OnRequest(proxy)
-	log.Printf("Starting Proxy Pool %s \n", *addr)
+
+	log.Printf("Starting Proxy Pool in [ %v ]\n", *addr)
 	http.ListenAndServe(*addr, proxy)
+}
+
+func generateCACertificate() ([]byte, []byte, error) {
+	// 生成私钥
+	caKey, err := rsa.GenerateKey(cryptoRand.Reader, 2048)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 构建证书模板
+	caTemplate := x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "ProxyPool"},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0), // 有效期为 10 年
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+
+	// 使用模板生成证书
+	caCert, err := x509.CreateCertificate(cryptoRand.Reader, &caTemplate, &caTemplate, &caKey.PublicKey, caKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return caCert, x509.MarshalPKCS1PrivateKey(caKey), nil
+}
+
+func CreteCA() {
+	// 生成 CA 证书
+	caCert, caKey, err := generateCACertificate()
+	if err != nil {
+		fmt.Println("Failed to generate CA certificate:", err)
+		return
+	}
+
+	pwd, _ := os.Getwd()
+	// 将证书和私钥保存到文件
+	err = saveCertificateToFile(caCert, caKey, filepath.Join(pwd, "conf", "ProxyPool"))
+	if err != nil {
+		fmt.Println("Failed to save certificate to file:", err)
+		return
+	}
+}
+
+func saveCertificateToFile(cert []byte, key []byte, filePath string) error {
+	_, err3 := os.Stat(filePath + ".crt")
+	if os.IsNotExist(err3) {
+		err3 = os.WriteFile(filePath+".crt", cert, 0644)
+		if err3 != nil {
+			return err3
+		}
+		log.Println("Frist Run, Create Certificate...")
+	}
+
+	_, err1 := os.Stat(filePath + ".pem")
+	if os.IsNotExist(err1) {
+		// 保存证书 pem
+		err1 = os.WriteFile(filePath+".pem", cert, 0644)
+		if err1 != nil {
+			return err1
+		}
+	}
+
+	_, err2 := os.Stat(filePath + "Key" + ".pem")
+	if os.IsNotExist(err2) {
+		// 保存私钥
+		err2 = os.WriteFile(filePath+"Key"+".pem", key, 0600)
+		if err2 != nil {
+			return err2
+		}
+	}
+
+	return nil
 }
 
 func SetCA(caCert, caKey []byte) error {
@@ -147,7 +239,7 @@ func OnRequest(proxy *goproxy.ProxyHttpServer) {
 		}
 
 		if IsInternalIP(request.Host) {
-			log.Printf("Proxy: %v Addres: %v", "No Proxy", request.URL)
+			log.Printf("Proxy: %v ---> Addres: %v", "No Proxy", request.URL)
 			return request, ctx.Req.Response
 		}
 
@@ -252,6 +344,10 @@ func PullProxy() {
 	}
 }
 
+// GetProxiesCount
+// 获取代理池数量
+//
+//	@return int 数量
 func GetProxiesCount() int {
 	count := 0
 	proxies.Range(func(key, value interface{}) bool {
@@ -284,39 +380,24 @@ func RemoveExpProxy() {
 	}
 }
 
-func CreateHttpServer() {
-	router := gin.Default()
+var proxies sync.Map
+var config *Config
 
-	router.GET("/GetProxies", GetProxies)
+type Config struct {
+	ProxyUrl     string `required:"true" yaml:"ProxyUrl"`
+	ExpTime      int    `required:"true" yaml:"ExpTime"`
+	IntervalTime int64  `required:"true" yaml:"IntervalTime"`
+	Auth         Auth   `yaml:"Auth"`
 
-	err := router.Run(":5000")
-	if err != nil {
-		fmt.Println("Failed to start server:", err)
-	}
+	DetailLog bool `required:"true" yaml:"DetailLog"`
 }
 
-type Proxy struct {
-	Key   string    `json:"key"`
-	Value time.Time `json:"value"`
+type Auth struct {
+	UserName string `yaml:"UserName"`
+	Password string `yaml:"Password"`
 }
 
-func GetProxies(c *gin.Context) {
-	var proxyList []Proxy
-
-	proxies.Range(func(key, value interface{}) bool {
-		k, _ := key.(string)
-		v, _ := value.(time.Time)
-		proxy := Proxy{
-			Key:   k,
-			Value: v,
-		}
-		proxyList = append(proxyList, proxy)
-
-		return true
-	})
-
-	c.JSON(200, gin.H{
-		"sta":  true,
-		"list": proxyList,
-	})
+// 自定义的日志输出结构
+type customLogger struct {
+	logger *log.Logger
 }
