@@ -11,4 +11,5 @@ FROM docker:stable
 
 COPY --from=builder /src/ProxyPool /ProxyPool
 COPY entrypoint.sh /entrypoint.sh
+EXPOSE 8080
 ENTRYPOINT ["/entrypoint.sh"]
