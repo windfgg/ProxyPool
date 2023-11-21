@@ -28,7 +28,8 @@ DetailLog: false
 ### Docker
 
 ```shell
-docker run -p 9876:8080 --name ProxyPool \
+docker run -d -p 9876:8080 --name ProxyPool \
+    --restart always \
     -v $(pwd)/proxy-pool/:/conf \
     ghcr.io/windfgg/proxypool/proxy-pool:latest
 ```
