@@ -67,8 +67,8 @@ func generateCACertificate() ([]byte, []byte, error) {
 //	@param filePath
 //	@return error
 func saveCertificateToFile(cert []byte, key []byte, certPath string, keyPath string) {
-	os.WriteFile(certPath+".pem", cert, 0644)
-	os.WriteFile(keyPath+".pem", key, 0644)
+	os.WriteFile(certPath, cert, 0644)
+	os.WriteFile(keyPath, key, 0644)
 }
 
 // go proxy 设置 ca证书
