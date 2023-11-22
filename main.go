@@ -27,6 +27,7 @@ func main() {
 	LoadConfig()
 	LoadProxyCA()
 	LoadProxyFactory()
+
 	time.Sleep(3 * time.Second)
 	verbose := flag.Bool("v", config.DetailLog, "记录发送到代理的每个请求的信息")
 	addr := flag.String("addr", ":8080", "代理监听地址和端口")
@@ -47,7 +48,10 @@ func SetOnRequest(proxy *goproxy.ProxyHttpServer) {
 	proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 	proxy.OnResponse().DoFunc(func(resp *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 		if resp.StatusCode == 403 || resp.StatusCode == 493 {
-			log.Printf("Trigger 403 or 439. Remove Proxies: [%v].", resp.Proto)
+			if config.DetailLog {
+				log.Printf("Trigger 403 or 439. Remove Proxies: [%v].", ctx.UserData)
+			}
+			proxies.Delete(ctx.UserData)
 		}
 		return resp
 	})
@@ -55,13 +59,17 @@ func SetOnRequest(proxy *goproxy.ProxyHttpServer) {
 	proxy.OnRequest().DoFunc(func(request *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 		proxy := GetRandomPorxy()
 		if proxy == "" {
-			log.Printf("Incorrect pull to proxy,Addres %v", request.URL)
-			return request, ctx.Req.Response
+			if config.DetailLog {
+				log.Printf("Incorrect pull to proxy,Addres %v", request.URL)
+			}
+			return request, nil
 		}
 
 		if IsInternalIP(request.Host) {
-			log.Printf("Proxy: %v ---> Addres: %v", "Intranet IP", request.URL)
-			return request, ctx.Req.Response
+			if config.DetailLog {
+				log.Printf("Proxy: %v ---> Addres: %v", "Intranet IP", request.URL)
+			}
+			return request, nil
 		}
 
 		// 设置代理地址
@@ -77,8 +85,11 @@ func SetOnRequest(proxy *goproxy.ProxyHttpServer) {
 				InsecureSkipVerify: true, // 如果代理使用的是自签名证书，可能需要跳过证书验证
 			},
 		}
+		ctx.UserData = proxy
 
-		log.Printf("Proxy: %v ---> Addres: %v", proxy, request.URL.Host)
+		if config.DetailLog {
+			log.Printf("Proxy: %v ---> Addres: %v", proxy, request.URL.Host)
+		}
 
 		response, err := transport.RoundTrip(request)
 		if err != nil {
