@@ -16,22 +16,31 @@ ProxyPool是一个使用Go编写的透明MITM代理转发库，旨在将请求�
 ### 配置模板
 
 ```yaml
-ProxyUrl: ""
-ExpTime: 25
-IntervalTime: 3
-Auth:
-  UserName: ""
-  Password: ""
-DetailLog: false
+ProxyUrl: ""     //代理URL
+ExpTime: 25      //代理过期时间
+IntervalTime: 3  //拉取间隔
+Auth:            //是否鉴权
+  UserName: ""   //鉴权用户名
+  Password: ""   //鉴权密码
+DetailLog: false //是否开启详细日志
 ```
 
 ### Docker
 
 ```shell
+1. 创建文件夹
+mkdir ProxyPool && cd ProxyPool
+2. 运行Docker 镜像
 docker run -d -p 9876:8080 --name ProxyPool \
     --restart always \
-    -v $(pwd)/proxy-pool/:/conf \
+    -v $(pwd):/conf \
     ghcr.io/windfgg/proxypool/proxy-pool:latest
+3.修改目录下的 config.yml 具体参数请参考配置模板
+4.安装证书 (windos启动的代理池需要将 ProxyPool.pem 证书更改为 ProxyPool.crt 再点击安装信任)
+sudo cp $(pwd)/ProxyPool.pem /usr/local/share/ca-certificates/
+sudo update-ca-certificates
+//查看证书是否信任
+openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt ProxyPool.pem
 ```
 
 ### 二进制发布版
