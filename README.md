@@ -36,11 +36,12 @@ docker run -d -p 9876:8080 --name ProxyPool \
     -v $(pwd):/conf \
     ghcr.io/windfgg/proxypool/proxy-pool:latest
 3.修改目录下的 config.yml 具体参数请参考配置模板
-4.安装证书 (windos启动的代理池需要将 ProxyPool.pem 证书更改为 ProxyPool.crt 再点击安装信任)
-sudo cp $(pwd)/ProxyPool.pem /usr/local/share/ca-certificates/
+4.安装证书 (windos启动的代理池需要将 ProxyPool.pem 证书更改为 ProxyPool.crt 再点击安装信任) liunx 需要安装 openssl
+openssl x509 -outform der -in ProxyPool.pem -out ProxyPool.crt
+sudo cp $(pwd)/ProxyPool.crt /usr/local/share/ca-certificates/
 sudo update-ca-certificates
 //查看证书是否信任
-openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt ProxyPool.pem
+openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt ProxyPool.crt
 ```
 
 ### 二进制发布版
