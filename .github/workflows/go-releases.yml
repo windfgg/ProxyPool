@@ -15,9 +15,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Replace goproxy
-        run: git clone https://github.com/windfgg/goproxy
-
       - name: Delete release assets
         uses: mknejp/delete-release-assets@v1
         with:
@@ -49,6 +46,7 @@ jobs:
       - name: Go release action
         uses: wangyoucao577/go-release-action@v1.40
         with:
+          pre_command: git clone https://github.com/windfgg/goproxy.git
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
@@ -56,3 +54,4 @@ jobs:
           goversion: "https://dl.google.com/go/go1.21.4.linux-amd64.tar.gz"
           binary_name: ${{ env.BINARY_NAME }}
           release_tag: latest
+          run: git clone https://github.com/windfgg/goproxy 

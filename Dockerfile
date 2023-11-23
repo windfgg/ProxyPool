@@ -3,6 +3,8 @@ FROM golang:1.21.4-alpine as builder
 WORKDIR /src
 COPY . /src
 
+RUN git clone https://github.com/windfgg/goproxy.git
+
 RUN go mod download && \
     go mod vendor && \
     CGO_ENABLED=0 go build -v -o ProxyPool .
