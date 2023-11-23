@@ -14,7 +14,11 @@ type Config struct {
 	IntervalTime int64  `required:"true" yaml:"IntervalTime"`
 	Auth         Auth   `yaml:"Auth"`
 
-	DetailLog bool `required:"true" yaml:"DetailLog"`
+	DetailLog        bool `required:"true" yaml:"DetailLog"`
+	DetailLogRequest bool `required:"true" yaml:"DetailLogRequest"`
+
+	MaxConnect  int  `required:"true" yaml:"MaxConnect"`
+	IsCertStore bool `required:"true" yaml:"IsCertStore"`
 }
 
 type Auth struct {

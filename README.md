@@ -16,13 +16,16 @@ ProxyPool是一个使用Go编写的透明MITM代理转发库，旨在将请求�
 ### 配置模板
 
 ```yaml
-ProxyUrl: ""     //代理URL
-ExpTime: 25      //代理过期时间
-IntervalTime: 3  //拉取间隔
-Auth:            //是否鉴权
-  UserName: ""   //鉴权用户名
-  Password: ""   //鉴权密码
-DetailLog: false //是否开启详细日志
+ProxyUrl: ""            //代理URL
+ExpTime: 25             //代理过期时间
+IntervalTime: 3         //拉取间隔
+Auth:                   //是否鉴权
+  UserName: ""          //鉴权用户名
+  Password: ""          //鉴权密码
+DetailLog: false        //输出详细日志
+DetailLogRequest: false //输出请求的详细日志
+MaxConnect: 1000        //最大并发数量 用来限制CPU占用
+IsCertStore: true       //是否存储证书 用来控制内存占用
 ```
 
 ### Docker

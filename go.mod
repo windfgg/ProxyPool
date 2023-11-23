@@ -40,3 +40,5 @@ require (
 	github.com/go-resty/resty/v2 v2.10.0
 	gopkg.in/yaml.v2 v2.2.2 // indirect
 )
+
+replace github.com/elazarl/goproxy => ./goproxy

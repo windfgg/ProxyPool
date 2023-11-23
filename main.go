@@ -15,26 +15,42 @@ import (
 
 func main() {
 	log.Println("Application Start")
+	log.Println("Version：0.3")
 
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("Gload Error:", r)
-		}
-		log.Printf("Application Exit \n")
-		time.Sleep(3 * time.Second)
-	}()
+	/*
+			gogc := os.Getenv("GOGC")
+			fmt.Println("Current GOGC value:", gogc)
+			os.Setenv("GOGC", "50")
+
+
+		defer func() {
+			if r := recover(); r != nil {
+				log.Println("Gload Error:", r)
+			}
+			log.Printf("Application Exit \n")
+			time.Sleep(3 * time.Second)
+		}()
+	*/
 
 	LoadConfig()
 	LoadProxyCA()
 	LoadProxyFactory()
 
 	time.Sleep(3 * time.Second)
-	verbose := flag.Bool("v", config.DetailLog, "记录发送到代理的每个请求的信息")
+	verbose := flag.Bool("v", config.DetailLogRequest, "记录发送到代理的每个请求的信息")
 	addr := flag.String("addr", ":8080", "代理监听地址和端口")
 
 	proxy := goproxy.NewProxyHttpServer()
+	if config.IsCertStore {
+		proxy.CertStore = NewCertStore()
+	}
+	proxy.ConnSemaphore = make(chan struct{}, config.MaxConnect)
 	proxy.NonproxyHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte(strconv.Itoa(GetProxiesCount())))
+		if req.URL.Path == "/get" {
+			w.Write([]byte(GetRandomPorxy()))
+		} else {
+			w.Write([]byte(strconv.Itoa(GetProxiesCount())))
+		}
 	})
 	proxy.Logger = &customLogger{log.New(os.Stderr, "", log.LstdFlags)}
 	proxy.Verbose = *verbose
@@ -42,6 +58,7 @@ func main() {
 
 	log.Printf("Starting Proxy Pool in [ %v ]\n", *addr)
 	http.ListenAndServe(*addr, proxy)
+	select {}
 }
 
 func SetOnRequest(proxy *goproxy.ProxyHttpServer) {

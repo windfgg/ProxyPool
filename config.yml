@@ -5,3 +5,7 @@ Auth:
   UserName: ""
   Password: ""
 DetailLog: false
+DetailLogRequest: false
+
+MaxConnect: 1000
+IsCertStore: true

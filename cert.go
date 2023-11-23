@@ -13,10 +13,53 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/elazarl/goproxy"
 )
+
+type CertStore struct {
+	certs map[string]*tls.Certificate
+	locks map[string]*sync.Mutex
+	sync.Mutex
+}
+
+func NewCertStore() *CertStore {
+	return &CertStore{
+		certs: map[string]*tls.Certificate{},
+		locks: map[string]*sync.Mutex{},
+	}
+}
+
+func (s *CertStore) Fetch(host string, genCert func() (*tls.Certificate, error)) (*tls.Certificate, error) {
+	hostLock := s.hostLock(host)
+	hostLock.Lock()
+	defer hostLock.Unlock()
+
+	cert, ok := s.certs[host]
+	var err error
+	if !ok {
+		cert, err = genCert()
+		if err != nil {
+			return nil, err
+		}
+		s.certs[host] = cert
+	}
+	return cert, nil
+}
+
+func (s *CertStore) hostLock(host string) *sync.Mutex {
+	s.Lock()
+	defer s.Unlock()
+
+	lock, ok := s.locks[host]
+	if !ok {
+		lock = &sync.Mutex{}
+		s.locks[host] = lock
+	}
+	return lock
+}
 
 // LoadProxyCA 加载代理服务器的 CA 证书
 func LoadProxyCA() {
