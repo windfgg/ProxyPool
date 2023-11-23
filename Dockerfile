@@ -3,6 +3,8 @@ FROM golang:1.21.4-alpine as builder
 WORKDIR /src
 COPY . /src
 
+RUN apk add --no-cache git
+
 RUN git clone https://github.com/windfgg/goproxy.git
 
 RUN go mod download && \
