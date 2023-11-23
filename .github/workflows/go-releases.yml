@@ -15,6 +15,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Replace goproxy
+        run: git clone https://github.com/windfgg/goproxy
+
       - name: Delete release assets
         uses: mknejp/delete-release-assets@v1
         with:
